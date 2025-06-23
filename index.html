@@ -17,7 +17,7 @@
     }
     th, td {
       border: 1px solid #ccc;
-      padding: 4px;
+      padding: 2px;
       text-align: center;
       width: 80px;
       height: 80px;
@@ -48,18 +48,111 @@
       left: 0;
       z-index: 1;
     }
+    .flag-diff {
+      background-size: contain;
+      background-repeat: no-repeat;
+      background-size: 90%;
+      background-position: center;
+    }
+    
   </style>
 </head>
 <body>
   <h1>Flaggle Grid</h1>
   <div id="table-container">Loading...</div>
   <script>
+    let canvas = document.createElement('canvas');
+    
+    let ctx = canvas.getContext('2d');
+    ctx.willReadFrequently = true; 
+
+    async function mount(el) {
+      el.classList.add('mounted');
+    //   console.log("Mounted:", el);
+
+        const rowFlag = el.dataset.rowFlag
+        const colFlag = el.dataset.colFlag
+
+        if(rowFlag === colFlag) {
+            el.innerHTML = '='
+            return;
+        }
+
+        const baseFlag = new Image();
+        baseFlag.src = `flags/${rowFlag}.png`;
+        const diffFlag = new Image();
+        diffFlag.src = `flags/${colFlag}.png`;
+
+        await Promise.all([baseFlag.decode(), diffFlag.decode()]);
+
+        canvas.width = baseFlag.width;
+        canvas.height = baseFlag.height;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(baseFlag, 0, 0);
+        const basePixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        ctx.drawImage(diffFlag, 0, 0);
+        const diffPixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+        for(let i = 0; i < basePixels.data.length; i += 4) {
+            const rdiff = basePixels.data[i] - diffPixels.data[i]
+            const gdiff = basePixels.data[i + 1] - diffPixels.data[i + 1]
+            const bdiff = basePixels.data[i + 2] - diffPixels.data[i + 2]
+
+            const total = Math.abs(rdiff) + Math.abs(gdiff) + Math.abs(bdiff);
+            if(total < 20) {
+                // If the difference is too small, set to white
+                basePixels.data[i] = 255; // Red
+                basePixels.data[i + 1] = 0; // Green
+                basePixels.data[i + 2] = 255; // Blue
+            } else {
+                basePixels.data[i] = 210; // Red
+                basePixels.data[i + 1] = 210; // Green
+                basePixels.data[i + 2] = 210; // Blue
+            }
+
+
+        //   basePixels.data[i] = Math.abs(basePixels.data[i] - diffPixels.data[i]); // Red
+        //   basePixels.data[i + 1] = Math.abs(basePixels.data[i + 1] - diffPixels.data[i + 1]); // Green
+        //   basePixels.data[i + 2] = Math.abs(basePixels.data[i + 2] - diffPixels.data[i + 2]); // Blue
+
+        //   basePixels.data[i + 2] = 255
+        }
+
+        ctx.putImageData(basePixels, 0, 0);
+
+
+        
+        el.innerHTML = '';
+
+        el.style.backgroundImage = `url(${canvas.toDataURL()})`;
+
+
+    }
+    function unmount(el) {
+      el.innerHTML = '';
+      el.style.backgroundImage = '';
+    }
+
     async function loadFlags() {
       const res = await fetch('flags/data.json');
       let flags = await res.json();
 
       // temporarily limit to 10 flags for performance
-    //   flags = flags.slice(0, 10)
+      flags = flags.slice(0, 30)
+
+
+      const observer = new IntersectionObserver((entries) => {
+    
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            mount(entry.target)
+          } else {
+            unmount(entry.target)
+          }
+        });
+      }, { threshold: 0.1 });
 
       // flags should be an array of objects, e.g. [{code: "us", name: "United States", image: "flags/us.png"}, ...]
       const container = document.getElementById('table-container');
@@ -96,12 +189,15 @@
         // Data cells
         for (const colFlag of flags) {
           const td = document.createElement('td');
-          td.innerHTML = `
-            <a href="?flag1=${rowFlag.code}&flag2=${colFlag.code}" title="${rowFlag.name} + ${colFlag.name}">
-              <span>${rowFlag.code} + ${colFlag.code}</span>
-            </a>
-          `;
+          td.className = 'flag-diff';
+          td.dataset.rowFlag = rowFlag.code;
+          td.dataset.colFlag = colFlag.code;
+
+          td.innerHTML = ``;
+
           tr.appendChild(td);
+
+          observer.observe(td)
         }
         tbody.appendChild(tr);
       }
@@ -109,6 +205,9 @@
 
       container.innerHTML = '';
       container.appendChild(table);
+
+
+    //   observer.observe(document.querySelectorAll('.flag-diff'));
     }
 
     loadFlags().catch(e => {
