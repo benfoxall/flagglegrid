@@ -140,7 +140,7 @@
       let flags = await res.json();
 
       // temporarily limit to 10 flags for performance
-      flags = flags.slice(0, 30)
+    //   flags = flags.slice(0, 30)
 
 
       const observer = new IntersectionObserver((entries) => {
@@ -152,7 +152,7 @@
             unmount(entry.target)
           }
         });
-      }, { threshold: 0.1 });
+      }, {  });
 
       // flags should be an array of objects, e.g. [{code: "us", name: "United States", image: "flags/us.png"}, ...]
       const container = document.getElementById('table-container');
