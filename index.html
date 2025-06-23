@@ -107,7 +107,7 @@
             const bdiff = basePixels.data[i + 2] - diffPixels.data[i + 2]
 
             const total = Math.abs(rdiff) + Math.abs(gdiff) + Math.abs(bdiff);
-            if(total < 20) {
+            if(total < 120) {
                 // If the difference is too small, set to white
                 basePixels.data[i] = 255; // Red
                 basePixels.data[i + 1] = 0; // Green
@@ -202,6 +202,11 @@
           td.dataset.colFlag = colFlag.code;
           td.dataset.rowIdx = rowIdx;
           td.dataset.colIdx = colIdx;
+
+          td.id = `cell-${rowFlag.code}-${colFlag.code}`;
+          td.onclick = function() {
+            document.location.hash = '#T' + td.id;
+          };
           td.innerHTML = ``;
           tr.appendChild(td);
           observer.observe(td)
@@ -212,6 +217,18 @@
 
       container.innerHTML = '';
       container.appendChild(table);
+
+
+      if(document.location.hash) {
+        const hash = document.location.hash.slice(2);
+        const cell = document.getElementById(hash);
+        if(cell) {
+          cell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          mount(cell);
+        } else {
+          console.warn('No cell found for hash:', hash);
+        }
+      }
 
       // Highlight row/col on hover
       const allRows = Array.from(tbody.children);
