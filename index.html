@@ -54,6 +54,12 @@
       background-size: 90%;
       background-position: center;
     }
+    .highlight-row th.row-header,
+    .highlight-row td.flag-diff,
+    .highlight-col,
+    .highlight-col-header {
+      background-color: #ffeeba !important;
+    }
     
   </style>
 </head>
@@ -175,7 +181,8 @@
 
       // Body rows
       const tbody = document.createElement('tbody');
-      for (const rowFlag of flags) {
+      for (let rowIdx = 0; rowIdx < flags.length; rowIdx++) {
+        const rowFlag = flags[rowIdx];
         const tr = document.createElement('tr');
         // Row header
         const th = document.createElement('th');
@@ -187,16 +194,16 @@
         tr.appendChild(th);
 
         // Data cells
-        for (const colFlag of flags) {
+        for (let colIdx = 0; colIdx < flags.length; colIdx++) {
+          const colFlag = flags[colIdx];
           const td = document.createElement('td');
           td.className = 'flag-diff';
           td.dataset.rowFlag = rowFlag.code;
           td.dataset.colFlag = colFlag.code;
-
+          td.dataset.rowIdx = rowIdx;
+          td.dataset.colIdx = colIdx;
           td.innerHTML = ``;
-
           tr.appendChild(td);
-
           observer.observe(td)
         }
         tbody.appendChild(tr);
@@ -206,8 +213,33 @@
       container.innerHTML = '';
       container.appendChild(table);
 
-
-    //   observer.observe(document.querySelectorAll('.flag-diff'));
+      // Highlight row/col on hover
+      const allRows = Array.from(tbody.children);
+      const allCells = Array.from(tbody.querySelectorAll('td.flag-diff'));
+      const headerCells = Array.from(thead.querySelectorAll('th')).slice(1); // skip top-left
+      allCells.forEach(cell => {
+        cell.addEventListener('mouseenter', function() {
+          const rowIdx = +cell.dataset.rowIdx;
+          const colIdx = +cell.dataset.colIdx;
+          // Highlight row
+          allRows[rowIdx].classList.add('highlight-row');
+          // Highlight column in body
+          for (let r = 0; r < allRows.length; r++) {
+            allRows[r].children[colIdx + 1].classList.add('highlight-col');
+          }
+          // Highlight column header
+          headerCells[colIdx].classList.add('highlight-col-header');
+        });
+        cell.addEventListener('mouseleave', function() {
+          const rowIdx = +cell.dataset.rowIdx;
+          const colIdx = +cell.dataset.colIdx;
+          allRows[rowIdx].classList.remove('highlight-row');
+          for (let r = 0; r < allRows.length; r++) {
+            allRows[r].children[colIdx + 1].classList.remove('highlight-col');
+          }
+          headerCells[colIdx].classList.remove('highlight-col-header');
+        });
+      });
     }
 
     loadFlags().catch(e => {
